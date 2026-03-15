@@ -26,6 +26,7 @@ Usage:
   npx codex-last-prompt-footer install
   npx codex-last-prompt-footer build
   npx codex-last-prompt-footer restore
+  npx --yes github:bic98/codex-last-prompt-footer
 
 Commands:
   install   Build and install the patched Codex CLI footer on Linux/macOS
@@ -35,6 +36,7 @@ Commands:
 
 Environment:
   CODEX_TAG   Override the OpenAI Codex source tag (default: rust-v0.114.0)
+  STATE_DIR   Override the cache root (default: ~/.codex-last-prompt-footer)
   SOURCE_DIR  Override the cached source directory for openai/codex
   OUTPUT_DIR  Override the build output directory used by build.sh
 `);

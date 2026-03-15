@@ -2,9 +2,11 @@
 set -euo pipefail
 
 CODEX_TAG="${CODEX_TAG:-rust-v0.114.0}"
+STATE_DIR="${STATE_DIR:-$HOME/.codex-last-prompt-footer}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_SCRIPT="$REPO_ROOT/scripts/build.sh"
-BUILT_BIN="$REPO_ROOT/dist/posix/codex"
+OUTPUT_DIR="${OUTPUT_DIR:-$STATE_DIR/dist/posix}"
+BUILT_BIN="$OUTPUT_DIR/codex"
 
 log() {
   printf '[codex-last-prompt-footer] %s\n' "$1"

@@ -2,9 +2,10 @@
 set -euo pipefail
 
 CODEX_TAG="${CODEX_TAG:-rust-v0.114.0}"
+STATE_DIR="${STATE_DIR:-$HOME/.codex-last-prompt-footer}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_DIR="${SOURCE_DIR:-$HOME/.codex-last-prompt-footer/openai-codex}"
-OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist/posix}"
+SOURCE_DIR="${SOURCE_DIR:-$STATE_DIR/openai-codex}"
+OUTPUT_DIR="${OUTPUT_DIR:-$STATE_DIR/dist/posix}"
 PATCH_FILE="$REPO_ROOT/patches/codex-v0.114.0-last-prompt-footer.patch"
 
 log() {
@@ -37,6 +38,8 @@ if [[ ! -f "$PATCH_FILE" ]]; then
   printf 'Patch file not found: %s\n' "$PATCH_FILE" >&2
   exit 1
 fi
+
+mkdir -p "$STATE_DIR"
 
 if [[ ! -d "$SOURCE_DIR" ]]; then
   log "Cloning official openai/codex source into $SOURCE_DIR"
