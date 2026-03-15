@@ -8,6 +8,7 @@
     "codex-last-prompt-footer": "./bin/codex-last-prompt-footer.js"
   },
   "files": [
+    "assets",
     "bin",
     "patches",
     "scripts",

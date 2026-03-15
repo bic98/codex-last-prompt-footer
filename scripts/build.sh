@@ -19,6 +19,59 @@ need_cmd() {
   }
 }
 
+show_linux_native_deps_help() {
+  cat >&2 <<'EOF'
+Missing native build dependencies for OpenAI Codex CLI.
+
+Install the OpenSSL development package and pkg-config for your distro, then rerun the installer.
+
+Ubuntu / Debian:
+  sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config build-essential
+
+Fedora / RHEL:
+  sudo dnf install -y openssl-devel pkgconf-pkg-config gcc gcc-c++ make
+
+Arch Linux:
+  sudo pacman -S --needed openssl pkgconf base-devel
+EOF
+}
+
+show_macos_native_deps_help() {
+  cat >&2 <<'EOF'
+Missing native build dependencies for OpenAI Codex CLI.
+
+Install the OpenSSL development package and pkg-config with Homebrew, then rerun the installer.
+
+macOS:
+  brew install openssl@3 pkg-config
+EOF
+}
+
+ensure_native_build_deps() {
+  case "$(uname -s)" in
+    Linux)
+      if ! command -v pkg-config >/dev/null 2>&1; then
+        show_linux_native_deps_help
+        exit 1
+      fi
+      if ! pkg-config --exists openssl; then
+        show_linux_native_deps_help
+        exit 1
+      fi
+      ;;
+    Darwin)
+      if ! command -v pkg-config >/dev/null 2>&1; then
+        show_macos_native_deps_help
+        exit 1
+      fi
+      if ! pkg-config --exists openssl; then
+        show_macos_native_deps_help
+        exit 1
+      fi
+      ;;
+  esac
+}
+
 ensure_rust() {
   if command -v cargo >/dev/null 2>&1; then
     return
@@ -33,6 +86,8 @@ need_cmd curl
 ensure_rust
 
 export PATH="$HOME/.cargo/bin:$PATH"
+
+ensure_native_build_deps
 
 if [[ ! -f "$PATCH_FILE" ]]; then
   printf 'Patch file not found: %s\n' "$PATCH_FILE" >&2

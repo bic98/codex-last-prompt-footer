@@ -1,0 +1,28 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="560" rx="24" fill="#0F172A"/>
+  <rect x="40" y="40" width="1120" height="480" rx="18" fill="#111827" stroke="#334155"/>
+  <circle cx="82" cy="76" r="8" fill="#F87171"/>
+  <circle cx="108" cy="76" r="8" fill="#FBBF24"/>
+  <circle cx="134" cy="76" r="8" fill="#34D399"/>
+  <text x="170" y="82" fill="#E5E7EB" font-family="Consolas, 'Courier New', monospace" font-size="24">Codex Last Prompt Footer</text>
+
+  <rect x="70" y="120" width="500" height="340" rx="14" fill="#0B1220" stroke="#1F2937"/>
+  <rect x="630" y="120" width="500" height="340" rx="14" fill="#0B1220" stroke="#1F2937"/>
+
+  <text x="95" y="160" fill="#FCA5A5" font-family="Consolas, 'Courier New', monospace" font-size="24" font-weight="700">Before</text>
+  <text x="655" y="160" fill="#86EFAC" font-family="Consolas, 'Courier New', monospace" font-size="24" font-weight="700">After</text>
+
+  <text x="95" y="215" fill="#D1D5DB" font-family="Consolas, 'Courier New', monospace" font-size="22">gpt-5.4 · gpt-5.4 high · 5h 99%</text>
+  <text x="95" y="248" fill="#D1D5DB" font-family="Consolas, 'Courier New', monospace" font-size="22">· weekly 68%</text>
+  <text x="95" y="315" fill="#64748B" font-family="Consolas, 'Courier New', monospace" font-size="20">You have to reopen the conversation</text>
+  <text x="95" y="345" fill="#64748B" font-family="Consolas, 'Courier New', monospace" font-size="20">or scroll up to remember</text>
+  <text x="95" y="375" fill="#64748B" font-family="Consolas, 'Courier New', monospace" font-size="20">what you just asked.</text>
+
+  <text x="655" y="215" fill="#D1D5DB" font-family="Consolas, 'Courier New', monospace" font-size="22">gpt-5.4 · gpt-5.4 high · 5h 99%</text>
+  <text x="655" y="248" fill="#D1D5DB" font-family="Consolas, 'Courier New', monospace" font-size="22">· weekly 68% · Q: fix the footer layout bug</text>
+  <text x="655" y="315" fill="#93C5FD" font-family="Consolas, 'Courier New', monospace" font-size="20">The latest prompt stays visible</text>
+  <text x="655" y="345" fill="#93C5FD" font-family="Consolas, 'Courier New', monospace" font-size="20">right in the footer while you work.</text>
+
+  <rect x="70" y="482" width="1060" height="1" fill="#1F2937"/>
+  <text x="90" y="510" fill="#94A3B8" font-family="Consolas, 'Courier New', monospace" font-size="18">Install: npx codex-last-prompt-footer</text>
+</svg>
