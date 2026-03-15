@@ -32,6 +32,7 @@ gpt-5.4 · gpt-5.4 high · 5h 99% · weekly 68% · Q: fix the footer layout bug
 - You stop reopening the conversation just to remember your last question.
 - The patch is small and focused instead of replacing the whole CLI.
 - Linux and macOS can install it with one `npx` command.
+- Matching GitHub Release binaries can skip the local Rust build entirely.
 - Original launchers are backed up before replacement.
 - It targets the official `openai/codex` Rust release tag.
 
@@ -67,24 +68,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 
 ## Linux / macOS Troubleshooting
 
-Codex CLI is a Rust binary. On Linux and sometimes macOS, the build may fail if OpenSSL development headers or `pkg-config` are missing.
+Codex CLI is a Rust binary. This installer tries a matching GitHub Release binary first. If none exists for your OS and CPU, it falls back to a local Rust build, and that build may fail on Linux if native development headers are missing (`openssl`, `libcap`, `pkg-config`).
 
 Ubuntu / Debian:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config build-essential
+sudo apt-get update && sudo apt-get install -y libssl-dev libcap-dev pkg-config build-essential
 ```
 
 Fedora / RHEL:
 
 ```bash
-sudo dnf install -y openssl-devel pkgconf-pkg-config gcc gcc-c++ make
+sudo dnf install -y openssl-devel libcap-devel pkgconf-pkg-config gcc gcc-c++ make
 ```
 
 Arch Linux:
 
 ```bash
-sudo pacman -S --needed openssl pkgconf base-devel
+sudo pacman -S --needed openssl libcap pkgconf base-devel
 ```
 
 macOS:
@@ -93,7 +94,7 @@ macOS:
 brew install openssl@3 pkg-config
 ```
 
-If you hit `openssl-sys`, `pkg-config`, or `OpenSSL development headers` errors, install the packages above and rerun the command.
+If you hit `openssl-sys`, `libcap`, `pkg-config`, or native header errors, install the packages above and rerun the command.
 
 ## Commands
 
@@ -126,15 +127,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ## What It Changes
 
 1. Finds your existing `codex` launcher.
-2. Downloads a pre-built patched binary (if available for your platform).
-3. If no pre-built binary is available:
-   - Installs Rust automatically if needed.
-   - Checks native build dependencies on Linux/macOS.
-   - Shallow-clones `openai/codex` at `rust-v0.114.0`.
-   - Applies the footer patch.
-   - Builds a patched `codex` binary.
-4. Backs up your original launcher.
-5. Repoints `codex` to the patched binary.
+2. Tries to download a matching prebuilt patched binary from GitHub Releases.
+3. If no prebuilt binary exists, installs Rust automatically if needed.
+4. Checks native build dependencies on Linux/macOS.
+5. Shallow-clones `openai/codex` at `rust-v0.114.0`.
+6. Applies the footer patch.
+7. Builds a patched `codex` binary.
+8. Backs up your original launcher.
+9. Repoints `codex` to the patched binary.
 
 ## Compatibility
 
@@ -147,7 +147,7 @@ Pre-built binaries are available for:
 
 | Platform | Architecture |
 |----------|-------------|
-| Linux | x86_64, aarch64 |
+| Linux | x86_64 |
 | macOS | x86_64 (Intel), aarch64 (Apple Silicon) |
 | Windows | x86_64 |
 
@@ -167,9 +167,44 @@ Linux/macOS defaults:
 Optional environment variables:
 
 - `CODEX_TAG`
+- `PATCH_FILE`
 - `STATE_DIR`
 - `SOURCE_DIR`
 - `OUTPUT_DIR`
+- `RELEASE_REPOSITORY`
+- `RELEASE_TAG`
+- `SKIP_PREBUILT_DOWNLOAD=1`
+
+## Faster Installs For Other People
+
+For public distribution, the reasonable path is to publish prebuilt binaries in GitHub Releases and let the installer fall back to Rust only when needed.
+
+The installer looks for asset names like these:
+
+```text
+codex-last-prompt-footer-0.114.0-linux-x86_64.tar.gz
+codex-last-prompt-footer-0.114.0-macos-x86_64.tar.gz
+codex-last-prompt-footer-0.114.0-macos-aarch64.tar.gz
+codex-last-prompt-footer-0.114.0-windows-x86_64.zip
+```
+
+By default it downloads from:
+
+```text
+https://github.com/bic98/codex-last-prompt-footer/releases/download/v0.114.0/
+```
+
+If you target a different upstream Codex tag, add a matching patch file in `patches/`:
+
+```text
+patches/codex-v0.115.0-last-prompt-footer.patch
+```
+
+Or override it directly:
+
+```bash
+PATCH_FILE=/absolute/path/to/codex-v0.115.0-last-prompt-footer.patch npx codex-last-prompt-footer build
+```
 
 ## Manual Patch Workflow
 

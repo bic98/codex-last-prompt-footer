@@ -1,9 +1,9 @@
-name: Build and Release
+name: release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types:
+      - published
 
 permissions:
   contents: write
@@ -14,114 +14,70 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            asset: codex-linux-x86_64
-            ext: tar.gz
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            asset: codex-linux-aarch64
-            ext: tar.gz
-            cross: true
+          - os: ubuntu-22.04
+            asset_suffix: linux-x86_64
+            archive_ext: tar.gz
+            binary_name: codex
           - os: macos-13
-            target: x86_64-apple-darwin
-            asset: codex-darwin-x86_64
-            ext: tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            asset: codex-darwin-aarch64
-            ext: tar.gz
+            asset_suffix: macos-x86_64
+            archive_ext: tar.gz
+            binary_name: codex
+          - os: macos-14
+            asset_suffix: macos-aarch64
+            archive_ext: tar.gz
+            binary_name: codex
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            asset: codex-windows-x86_64
-            ext: zip
+            asset_suffix: windows-x86_64
+            archive_ext: zip
+            binary_name: codex.exe
 
     runs-on: ${{ matrix.os }}
-
-    env:
-      CODEX_TAG: rust-v0.114.0
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
-      - name: Install cross (Linux ARM64)
-        if: matrix.cross
-        run: cargo install cross --locked
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev libcap-dev pkg-config build-essential
 
-      - name: Install Linux ARM64 cross-compilation deps
-        if: matrix.cross
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: Install Linux native deps
-        if: runner.os == 'Linux' && !matrix.cross
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config build-essential
-
-      - name: Install macOS deps
+      - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: brew install openssl@3 pkg-config
 
-      - name: Clone and patch openai/codex
-        shell: bash
-        run: |
-          git clone --depth 1 --branch "$CODEX_TAG" https://github.com/openai/codex.git codex-source
-          git -C codex-source apply "$GITHUB_WORKSPACE/patches/codex-v0.114.0-last-prompt-footer.patch"
-
-      - name: Build (native)
-        if: ${{ !matrix.cross }}
-        shell: bash
-        run: |
-          cd codex-source/codex-rs
-          cargo build -p codex-cli --release --target ${{ matrix.target }}
-
-      - name: Build (cross)
-        if: matrix.cross
-        shell: bash
-        run: |
-          cd codex-source/codex-rs
-          cross build -p codex-cli --release --target ${{ matrix.target }}
-
-      - name: Package (Unix)
+      - name: Build patched Codex on POSIX
         if: runner.os != 'Windows'
-        shell: bash
         run: |
-          mkdir -p staging
-          cp "codex-source/codex-rs/target/${{ matrix.target }}/release/codex" staging/codex
-          chmod +x staging/codex
-          tar -czf "${{ matrix.asset }}.${{ matrix.ext }}" -C staging codex
+          mkdir -p dist/release
+          SKIP_PREBUILT_DOWNLOAD=1 OUTPUT_DIR="$PWD/dist/release" bash ./scripts/build.sh
 
-      - name: Package (Windows)
+      - name: Build patched Codex on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force staging | Out-Null
-          Copy-Item "codex-source\codex-rs\target\${{ matrix.target }}\release\codex.exe" "staging\codex.exe"
-          Compress-Archive -Path "staging\codex.exe" -DestinationPath "${{ matrix.asset }}.${{ matrix.ext }}"
+          New-Item -ItemType Directory -Force dist\release | Out-Null
+          ./scripts/build.ps1 -SkipPrebuiltDownload -OutputDir "$PWD\dist\release"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}.${{ matrix.ext }}
+      - name: Package POSIX archive
+        if: runner.os != 'Windows'
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          asset="codex-last-prompt-footer-${version}-${{ matrix.asset_suffix }}.${{ matrix.archive_ext }}"
+          tar -C dist/release -czf "$asset" "${{ matrix.binary_name }}"
+          echo "ASSET_NAME=$asset" >> "$GITHUB_ENV"
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
+      - name: Package Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $asset = "codex-last-prompt-footer-$version-${{ matrix.asset_suffix }}.${{ matrix.archive_ext }}"
+          Compress-Archive -Path "dist\release\${{ matrix.binary_name }}" -DestinationPath $asset -Force
+          "ASSET_NAME=$asset" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Create Release
+      - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
-          files: artifacts/*
+          files: ${{ env.ASSET_NAME }}
