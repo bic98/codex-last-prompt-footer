@@ -5,9 +5,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/bic98/codex-last-prompt-footer?style=social)](https://github.com/bic98/codex-last-prompt-footer)
 [![license](https://img.shields.io/github/license/bic98/codex-last-prompt-footer)](./LICENSE)
 
-Make OpenAI Codex CLI show your latest prompt in the footer.
-
-Instead of only seeing model and usage stats, you also see a live `Q: ...` preview of what you just asked.
+`Codex Last Prompt Footer` keeps your latest prompt visible in the OpenAI Codex CLI footer with a live `Q: ...` preview next to the usual model and usage stats.
 
 ![Codex Last Prompt Footer Demo](./assets/demo.svg)
 
