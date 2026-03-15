@@ -46,6 +46,12 @@ npx codex-last-prompt-footer
 
 The installer automatically downloads a pre-built binary when available, so you can skip the Rust build entirely. If no pre-built binary exists for your platform, it falls back to building from source.
 
+If Linux or macOS build dependencies are missing, you can let the installer attempt to install them:
+
+```bash
+npx codex-last-prompt-footer --install-deps
+```
+
 Alternative sources:
 
 ```bash
@@ -174,6 +180,7 @@ Optional environment variables:
 - `RELEASE_REPOSITORY`
 - `RELEASE_TAG`
 - `SKIP_PREBUILT_DOWNLOAD=1`
+- `AUTO_INSTALL_DEPS=1`
 
 ## Faster Installs For Other People
 

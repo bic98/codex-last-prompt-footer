@@ -30,7 +30,7 @@ if [[ -z "$launcher" ]]; then
 fi
 
 log "Preparing patched codex binary"
-bash "$BUILD_SCRIPT"
+bash "$BUILD_SCRIPT" "$@"
 
 if [[ ! -x "$BUILT_BIN" ]]; then
   printf 'Built binary not found: %s\n' "$BUILT_BIN" >&2

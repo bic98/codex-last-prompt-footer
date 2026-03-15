@@ -10,6 +10,7 @@ PATCH_FILE="${PATCH_FILE:-}"
 RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-bic98/codex-last-prompt-footer}"
 RELEASE_TAG="${RELEASE_TAG:-v${CODEX_TAG#rust-v}}"
 SKIP_PREBUILT_DOWNLOAD="${SKIP_PREBUILT_DOWNLOAD:-0}"
+AUTO_INSTALL_DEPS="${AUTO_INSTALL_DEPS:-0}"
 BUILD_INFO_FILE="$OUTPUT_DIR/.build-info"
 
 log() {
@@ -21,6 +22,37 @@ need_cmd() {
     printf 'Required command not found: %s\n' "$1" >&2
     exit 1
   }
+}
+
+print_help() {
+  cat <<'EOF'
+Usage:
+  bash scripts/build.sh [--install-deps]
+
+Options:
+  --install-deps  Attempt to install missing native build dependencies with the system package manager.
+  -h, --help      Show this help text.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --install-deps)
+        AUTO_INSTALL_DEPS=1
+        ;;
+      -h|--help)
+        print_help
+        exit 0
+        ;;
+      *)
+        printf 'Unknown argument: %s\n' "$1" >&2
+        print_help >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
 }
 
 patch_name_for_tag() {
@@ -151,33 +183,86 @@ macOS:
 EOF
 }
 
-ensure_native_build_deps() {
+run_as_root() {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    printf 'sudo is required to install native build dependencies automatically.\n' >&2
+    exit 1
+  fi
+}
+
+check_native_build_deps() {
   case "$(uname -s)" in
     Linux)
-      if ! command -v pkg-config >/dev/null 2>&1; then
-        show_linux_native_deps_help
-        exit 1
-      fi
-      if ! pkg-config --exists openssl; then
-        show_linux_native_deps_help
-        exit 1
-      fi
-      if ! pkg-config --exists libcap; then
+      command -v pkg-config >/dev/null 2>&1 &&
+        pkg-config --exists openssl &&
+        pkg-config --exists libcap
+      ;;
+    Darwin)
+      command -v pkg-config >/dev/null 2>&1 &&
+        pkg-config --exists openssl
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+install_native_build_deps() {
+  case "$(uname -s)" in
+    Linux)
+      if command -v apt-get >/dev/null 2>&1; then
+        log "Installing native build dependencies with apt-get"
+        run_as_root apt-get update
+        run_as_root apt-get install -y libssl-dev libcap-dev pkg-config build-essential
+      elif command -v dnf >/dev/null 2>&1; then
+        log "Installing native build dependencies with dnf"
+        run_as_root dnf install -y openssl-devel libcap-devel pkgconf-pkg-config gcc gcc-c++ make
+      elif command -v pacman >/dev/null 2>&1; then
+        log "Installing native build dependencies with pacman"
+        run_as_root pacman -Sy --needed openssl libcap pkgconf base-devel
+      else
+        printf 'Automatic dependency installation is not supported on this Linux distribution.\n' >&2
         show_linux_native_deps_help
         exit 1
       fi
       ;;
     Darwin)
-      if ! command -v pkg-config >/dev/null 2>&1; then
+      if ! command -v brew >/dev/null 2>&1; then
+        printf 'Homebrew is required to install macOS dependencies automatically.\n' >&2
         show_macos_native_deps_help
         exit 1
       fi
-      if ! pkg-config --exists openssl; then
-        show_macos_native_deps_help
-        exit 1
-      fi
+      log "Installing native build dependencies with Homebrew"
+      brew install openssl@3 pkg-config
       ;;
   esac
+}
+
+ensure_native_build_deps() {
+  if check_native_build_deps; then
+    return
+  fi
+
+  if [[ "$AUTO_INSTALL_DEPS" == "1" ]]; then
+    install_native_build_deps
+    if check_native_build_deps; then
+      return
+    fi
+  fi
+
+  case "$(uname -s)" in
+    Linux)
+      show_linux_native_deps_help
+      ;;
+    Darwin)
+      show_macos_native_deps_help
+      ;;
+  esac
+  exit 1
 }
 
 ensure_rust() {
@@ -188,6 +273,8 @@ ensure_rust() {
   log "Rust not found. Installing rustup (stable, minimal profile)."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 }
+
+parse_args "$@"
 
 need_cmd git
 need_cmd curl
