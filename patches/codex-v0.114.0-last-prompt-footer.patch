@@ -1,0 +1,140 @@
+diff --git a/codex-rs/tui/src/chatwidget.rs b/codex-rs/tui/src/chatwidget.rs
+index 7fdc294..ea40f28 100644
+--- a/codex-rs/tui/src/chatwidget.rs
++++ b/codex-rs/tui/src/chatwidget.rs
+@@ -376,6 +376,7 @@ fn is_standard_tool_call(parsed_cmd: &[ParsedCommand]) -> bool {
+ const RATE_LIMIT_WARNING_THRESHOLDS: [f64; 3] = [75.0, 90.0, 95.0];
+ const NUDGE_MODEL_SLUG: &str = "gpt-5.1-codex-mini";
+ const RATE_LIMIT_SWITCH_PROMPT_THRESHOLD: f64 = 90.0;
++const STATUS_LINE_PROMPT_PREVIEW_GRAPHEMES: usize = 80;
+ 
+ #[derive(Default)]
+ struct RateLimitWarningState {
+@@ -691,6 +692,8 @@ pub(crate) struct ChatWidget {
+     current_rollout_path: Option<PathBuf>,
+     // Current working directory (if known)
+     current_cwd: Option<PathBuf>,
++    // Most recent submitted user prompt shown alongside the footer status line.
++    last_submitted_prompt: Option<String>,
+     // Runtime network proxy bind addresses from SessionConfigured.
+     session_network_proxy: Option<codex_protocol::protocol::SessionNetworkProxyRuntime>,
+     // Shared latch so we only warn once about invalid status-line item IDs.
+@@ -1141,6 +1144,9 @@ impl ChatWidget {
+         let line = if parts.is_empty() {
+             None
+         } else {
++            if let Some(prompt) = self.status_line_prompt_label() {
++                parts.push(prompt);
++            }
+             Some(Line::from(parts.join(" · ")))
+         };
+         self.set_status_line(line);
+@@ -1189,6 +1195,25 @@ impl ChatWidget {
+         self.request_status_line_branch(cwd);
+     }
+ 
++    fn set_last_submitted_prompt(&mut self, prompt: &str) {
++        let normalized = prompt.split_whitespace().collect::<Vec<_>>().join(" ");
++        let normalized = normalized.trim();
++        if normalized.is_empty() {
++            return;
++        }
++
++        self.last_submitted_prompt = Some(truncate_text(
++            normalized,
++            STATUS_LINE_PROMPT_PREVIEW_GRAPHEMES,
++        ));
++    }
++
++    fn status_line_prompt_label(&self) -> Option<String> {
++        self.last_submitted_prompt
++            .as_ref()
++            .map(|prompt| format!("Q: {prompt}"))
++    }
++
+     fn collect_runtime_metrics_delta(&mut self) {
+         if let Some(delta) = self.session_telemetry.runtime_metrics_summary() {
+             self.apply_runtime_metrics_delta(delta);
+@@ -3290,6 +3315,7 @@ impl ChatWidget {
+             feedback_audience,
+             current_rollout_path: None,
+             current_cwd,
++            last_submitted_prompt: None,
+             session_network_proxy: None,
+             status_line_invalid_items_warned,
+             status_line_branch: None,
+@@ -3474,6 +3500,7 @@ impl ChatWidget {
+             feedback_audience,
+             current_rollout_path: None,
+             current_cwd,
++            last_submitted_prompt: None,
+             session_network_proxy: None,
+             status_line_invalid_items_warned,
+             status_line_branch: None,
+@@ -3650,6 +3677,7 @@ impl ChatWidget {
+             feedback_audience,
+             current_rollout_path: None,
+             current_cwd,
++            last_submitted_prompt: None,
+             session_network_proxy: None,
+             status_line_invalid_items_warned,
+             status_line_branch: None,
+@@ -4533,6 +4561,11 @@ impl ChatWidget {
+             return;
+         }
+ 
++        if !text.is_empty() {
++            self.set_last_submitted_prompt(&text);
++            self.refresh_status_line();
++        }
++
+         for image_url in &remote_image_urls {
+             items.push(UserInput::Image {
+                 image_url: image_url.clone(),
+diff --git a/codex-rs/tui/src/chatwidget/tests.rs b/codex-rs/tui/src/chatwidget/tests.rs
+index 0896adc..7104307 100644
+--- a/codex-rs/tui/src/chatwidget/tests.rs
++++ b/codex-rs/tui/src/chatwidget/tests.rs
+@@ -1888,6 +1888,7 @@ async fn make_chatwidget_manual(
+         feedback_audience: FeedbackAudience::External,
+         current_rollout_path: None,
+         current_cwd: None,
++        last_submitted_prompt: None,
+         session_network_proxy: None,
+         status_line_invalid_items_warned: Arc::new(AtomicBool::new(false)),
+         status_line_branch: None,
+@@ -9801,6 +9802,34 @@ async fn status_line_model_with_reasoning_fast_footer_snapshot() {
+     );
+ }
+ 
++#[tokio::test]
++async fn status_line_appends_last_submitted_prompt_preview() {
++    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
++    chat.thread_id = Some(ThreadId::new());
++    chat.config.tui_status_line = Some(vec!["model-name".to_string()]);
++    chat.refresh_status_line();
++    assert_eq!(status_line_text(&chat), Some("gpt-5.4".to_string()));
++
++    chat.submit_user_message_with_mode(
++        "check\nthis    footer prompt preview".to_string(),
++        chat.active_collaboration_mask
++            .clone()
++            .expect("expected collaboration mask"),
++    );
++
++    assert_matches!(
++        next_submit_op(&mut op_rx),
++        Op::UserTurn {
++            collaboration_mode: Some(_),
++            ..
++        }
++    );
++    assert_eq!(
++        status_line_text(&chat),
++        Some("gpt-5.4 · Q: check this footer prompt preview".to_string())
++    );
++}
++
+ #[tokio::test]
+ async fn stream_recovery_restores_previous_status_header() {
+     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
