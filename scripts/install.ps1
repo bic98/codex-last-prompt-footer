@@ -6,6 +6,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$CodexVersion = $CodexTag -replace '^rust-v', ''
+$GitHubRepo = "bic98/codex-last-prompt-footer"
+
 function Write-Step {
     param([string]$Message)
     Write-Host "[codex-last-prompt-footer] $Message"
@@ -32,7 +35,7 @@ function Get-CodexLauncherDirectory {
         }
     }
 
-    throw "Could not locate the installed codex launcher directory."
+    throw "Could not locate the installed codex launcher directory. Install the official Codex CLI first: npm install -g @openai/codex"
 }
 
 function Backup-IfNeeded {
@@ -42,13 +45,41 @@ function Backup-IfNeeded {
     }
 }
 
+function Try-DownloadPrebuilt {
+    $assetName = "codex-windows-x86_64.zip"
+    $url = "https://github.com/$GitHubRepo/releases/download/v$CodexVersion/$assetName"
+
+    Write-Step "Attempting to download pre-built binary"
+
+    $repoRoot = Split-Path $PSScriptRoot -Parent
+    $outputDir = Join-Path $repoRoot "dist\windows"
+    $tmpFile = Join-Path $env:TEMP $assetName
+
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $tmpFile -TimeoutSec 30 -ErrorAction Stop
+        New-Item -ItemType Directory -Force $outputDir | Out-Null
+        Expand-Archive -Path $tmpFile -DestinationPath $outputDir -Force
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+        Write-Step "Pre-built binary downloaded successfully (no Rust build needed)"
+        return $true
+    } catch {
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+        Write-Step "No pre-built binary available - falling back to source build"
+        return $false
+    }
+}
+
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $buildScript = Join-Path $PSScriptRoot "build.ps1"
 
-Write-Step "Building patched codex binary"
-& $buildScript -CodexTag $CodexTag
-if ($LASTEXITCODE -ne 0) {
-    throw "build.ps1 failed with exit code $LASTEXITCODE"
+$shimDir = Get-CodexLauncherDirectory
+
+if (-not (Try-DownloadPrebuilt)) {
+    Write-Step "Building patched codex binary from source"
+    & $buildScript -CodexTag $CodexTag
+    if ($LASTEXITCODE -ne 0) {
+        throw "build.ps1 failed with exit code $LASTEXITCODE"
+    }
 }
 
 $builtExe = Join-Path $repoRoot "dist\windows\codex.exe"
@@ -56,7 +87,6 @@ if (-not (Test-Path $builtExe)) {
     throw "Built binary not found: $builtExe"
 }
 
-$shimDir = Get-CodexLauncherDirectory
 $customDir = Join-Path $shimDir "custom-codex"
 New-Item -ItemType Directory -Force $customDir | Out-Null
 Copy-Item $builtExe (Join-Path $customDir "codex.exe") -Force

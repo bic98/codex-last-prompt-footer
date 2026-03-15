@@ -46,46 +46,49 @@ if (-not (Test-Path $patchFile)) {
 }
 
 if (-not (Test-Path $SourceDir)) {
-    Write-Step "Cloning official openai/codex source into $SourceDir"
-    git clone https://github.com/openai/codex.git $SourceDir
+    Write-Step "Cloning official openai/codex source (shallow) into $SourceDir"
+    git clone --depth 1 --branch $CodexTag https://github.com/openai/codex.git $SourceDir
     if ($LASTEXITCODE -ne 0) {
         throw "git clone failed with exit code $LASTEXITCODE"
     }
 } else {
     Write-Step "Using existing source cache at $SourceDir"
-}
-
-Write-Step "Fetching tags"
-git -C $SourceDir fetch --tags origin
-if ($LASTEXITCODE -ne 0) {
-    throw "git fetch failed with exit code $LASTEXITCODE"
-}
-
-Write-Step "Checking out $CodexTag"
-git -C $SourceDir checkout --force $CodexTag
-if ($LASTEXITCODE -ne 0) {
-    throw "git checkout failed with exit code $LASTEXITCODE"
-}
-
-Write-Step "Resetting managed source cache"
-git -C $SourceDir reset --hard $CodexTag
-if ($LASTEXITCODE -ne 0) {
-    throw "git reset failed with exit code $LASTEXITCODE"
-}
-
-git -C $SourceDir clean -fd
-if ($LASTEXITCODE -ne 0) {
-    throw "git clean failed with exit code $LASTEXITCODE"
+    $currentTag = git -C $SourceDir describe --tags --exact-match HEAD 2>$null
+    if ($currentTag -ne $CodexTag) {
+        Write-Step "Fetching tag $CodexTag"
+        git -C $SourceDir fetch --depth 1 origin tag $CodexTag --no-tags
+        if ($LASTEXITCODE -ne 0) {
+            throw "git fetch failed with exit code $LASTEXITCODE"
+        }
+    }
+    git -C $SourceDir checkout --force $CodexTag
+    if ($LASTEXITCODE -ne 0) {
+        throw "git checkout failed with exit code $LASTEXITCODE"
+    }
+    git -C $SourceDir reset --hard $CodexTag
+    if ($LASTEXITCODE -ne 0) {
+        throw "git reset failed with exit code $LASTEXITCODE"
+    }
+    git -C $SourceDir clean -fd
+    if ($LASTEXITCODE -ne 0) {
+        throw "git clean failed with exit code $LASTEXITCODE"
+    }
 }
 
 Write-Step "Applying last-prompt footer patch"
+git -C $SourceDir apply --check $patchFile 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Step "Patch already applied or source has diverged - resetting and retrying"
+    git -C $SourceDir checkout --force $CodexTag
+    git -C $SourceDir reset --hard $CodexTag
+}
 git -C $SourceDir apply $patchFile
 if ($LASTEXITCODE -ne 0) {
     throw "git apply failed with exit code $LASTEXITCODE"
 }
 
 $cargoRoot = Join-Path $SourceDir "codex-rs"
-Write-Step "Building patched codex-cli"
+Write-Step "Building patched codex-cli (this may take a few minutes on first run)"
 Push-Location $cargoRoot
 try {
     cargo +stable build -p codex-cli --release

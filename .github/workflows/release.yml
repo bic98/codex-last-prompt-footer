@@ -1,0 +1,127 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: codex-linux-x86_64
+            ext: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            asset: codex-linux-aarch64
+            ext: tar.gz
+            cross: true
+          - os: macos-13
+            target: x86_64-apple-darwin
+            asset: codex-darwin-x86_64
+            ext: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: codex-darwin-aarch64
+            ext: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: codex-windows-x86_64
+            ext: zip
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CODEX_TAG: rust-v0.114.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (Linux ARM64)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Install Linux ARM64 cross-compilation deps
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install Linux native deps
+        if: runner.os == 'Linux' && !matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config build-essential
+
+      - name: Install macOS deps
+        if: runner.os == 'macOS'
+        run: brew install openssl@3 pkg-config
+
+      - name: Clone and patch openai/codex
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$CODEX_TAG" https://github.com/openai/codex.git codex-source
+          git -C codex-source apply "$GITHUB_WORKSPACE/patches/codex-v0.114.0-last-prompt-footer.patch"
+
+      - name: Build (native)
+        if: ${{ !matrix.cross }}
+        shell: bash
+        run: |
+          cd codex-source/codex-rs
+          cargo build -p codex-cli --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        shell: bash
+        run: |
+          cd codex-source/codex-rs
+          cross build -p codex-cli --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp "codex-source/codex-rs/target/${{ matrix.target }}/release/codex" staging/codex
+          chmod +x staging/codex
+          tar -czf "${{ matrix.asset }}.${{ matrix.ext }}" -C staging codex
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging | Out-Null
+          Copy-Item "codex-source\codex-rs\target\${{ matrix.target }}\release\codex.exe" "staging\codex.exe"
+          Compress-Archive -Path "staging\codex.exe" -DestinationPath "${{ matrix.asset }}.${{ matrix.ext }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}.${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

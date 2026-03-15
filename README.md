@@ -43,6 +43,8 @@ gpt-5.4 · gpt-5.4 high · 5h 99% · weekly 68% · Q: fix the footer layout bug
 npx codex-last-prompt-footer
 ```
 
+The installer automatically downloads a pre-built binary when available, so you can skip the Rust build entirely. If no pre-built binary exists for your platform, it falls back to building from source.
+
 Alternative sources:
 
 ```bash
@@ -124,13 +126,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ## What It Changes
 
 1. Finds your existing `codex` launcher.
-2. Installs Rust automatically if needed.
-3. Checks native build dependencies on Linux/macOS.
-4. Clones `openai/codex` at `rust-v0.114.0`.
-5. Applies the footer patch.
-6. Builds a patched `codex` binary.
-7. Backs up your original launcher.
-8. Repoints `codex` to the patched binary.
+2. Downloads a pre-built patched binary (if available for your platform).
+3. If no pre-built binary is available:
+   - Installs Rust automatically if needed.
+   - Checks native build dependencies on Linux/macOS.
+   - Shallow-clones `openai/codex` at `rust-v0.114.0`.
+   - Applies the footer patch.
+   - Builds a patched `codex` binary.
+4. Backs up your original launcher.
+5. Repoints `codex` to the patched binary.
 
 ## Compatibility
 
@@ -138,6 +142,16 @@ Current target:
 
 - `@openai/codex` `0.114.0`
 - source tag `rust-v0.114.0`
+
+Pre-built binaries are available for:
+
+| Platform | Architecture |
+|----------|-------------|
+| Linux | x86_64, aarch64 |
+| macOS | x86_64 (Intel), aarch64 (Apple Silicon) |
+| Windows | x86_64 |
+
+If no pre-built binary is available for your platform, the installer falls back to building from source automatically.
 
 If OpenAI changes the footer implementation in a newer release, the patch may need to be refreshed.
 

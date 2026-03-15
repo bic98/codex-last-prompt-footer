@@ -15,8 +15,9 @@ const scripts = {
 };
 
 const args = process.argv.slice(2);
-const command = args[0] && !args[0].startsWith('-') ? args[0] : 'install';
-const passthroughArgs = command === 'install' ? args : args.slice(1);
+const hasExplicitCommand = args[0] && !args[0].startsWith('-');
+const command = hasExplicitCommand ? args[0] : 'install';
+const passthroughArgs = hasExplicitCommand ? args.slice(1) : args;
 
 function printHelp() {
   console.log(`codex-last-prompt-footer

@@ -97,25 +97,28 @@ fi
 mkdir -p "$STATE_DIR"
 
 if [[ ! -d "$SOURCE_DIR" ]]; then
-  log "Cloning official openai/codex source into $SOURCE_DIR"
-  git clone https://github.com/openai/codex.git "$SOURCE_DIR"
+  log "Cloning official openai/codex source (shallow) into $SOURCE_DIR"
+  git clone --depth 1 --branch "$CODEX_TAG" https://github.com/openai/codex.git "$SOURCE_DIR"
 else
   log "Using existing source cache at $SOURCE_DIR"
+  if ! git -C "$SOURCE_DIR" describe --tags --exact-match HEAD 2>/dev/null | grep -qF "$CODEX_TAG"; then
+    log "Fetching tag $CODEX_TAG"
+    git -C "$SOURCE_DIR" fetch --depth 1 origin tag "$CODEX_TAG" --no-tags
+  fi
+  git -C "$SOURCE_DIR" checkout --force "$CODEX_TAG"
+  git -C "$SOURCE_DIR" reset --hard "$CODEX_TAG"
+  git -C "$SOURCE_DIR" clean -fd
 fi
 
-log "Fetching tags"
-git -C "$SOURCE_DIR" fetch --tags origin
-
-log "Checking out $CODEX_TAG"
-git -C "$SOURCE_DIR" checkout --force "$CODEX_TAG"
-
-git -C "$SOURCE_DIR" reset --hard "$CODEX_TAG"
-git -C "$SOURCE_DIR" clean -fd
-
 log "Applying last-prompt footer patch"
+if ! git -C "$SOURCE_DIR" apply --check "$PATCH_FILE" 2>/dev/null; then
+  log "Patch already applied or source has diverged — resetting and retrying"
+  git -C "$SOURCE_DIR" checkout --force "$CODEX_TAG"
+  git -C "$SOURCE_DIR" reset --hard "$CODEX_TAG"
+fi
 git -C "$SOURCE_DIR" apply "$PATCH_FILE"
 
-log "Building patched codex-cli"
+log "Building patched codex-cli (this may take a few minutes on first run)"
 pushd "$SOURCE_DIR/codex-rs" >/dev/null
 cargo +stable build -p codex-cli --release
 popd >/dev/null
