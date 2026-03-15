@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "codex-last-prompt-footer": "./bin/codex-last-prompt-footer.mjs"
+    "codex-last-prompt-footer": "./bin/codex-last-prompt-footer.js"
   },
   "files": [
     "bin",

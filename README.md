@@ -255,7 +255,7 @@ cargo +stable build -p codex-cli --release
 
 ```text
 bin/
-  codex-last-prompt-footer.mjs
+  codex-last-prompt-footer.js
 patches/
   codex-v0.114.0-last-prompt-footer.patch
 scripts/
