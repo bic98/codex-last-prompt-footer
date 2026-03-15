@@ -2,7 +2,7 @@
 
 Show your latest prompt directly in the OpenAI Codex CLI footer and status line.
 
-`Codex Last Prompt Footer` is a patch and installer for `OpenAI Codex CLI` that adds a `Q: ...` preview of your latest submitted prompt to the bottom footer, next to status items like model, reasoning level, `5h` usage, and `weekly` usage.
+`Codex Last Prompt Footer` is a patch, installer, and npm-ready wrapper for `OpenAI Codex CLI` that adds a `Q: ...` preview of your latest submitted prompt to the bottom footer, next to status items like model, reasoning level, `5h` usage, and `weekly` usage.
 
 It is intended for developers looking for an easy way to add `latest prompt`, `prompt history preview`, `footer text`, or `status line customization` to the official OpenAI Codex CLI on Windows, Linux, and macOS.
 
@@ -15,8 +15,10 @@ This repository is for people searching for:
 - `Codex CLI Windows installer`
 - `Codex CLI Linux patch`
 - `Codex CLI macOS patch`
+- `Codex CLI npx install`
+- `OpenAI Codex CLI npx`
 
-Korean summary: `OpenAI Codex CLI` 하단 footer/status line 에 마지막 질문을 `Q: ...` 형태로 보여주는 패치와 설치 스크립트입니다. Windows PowerShell 뿐 아니라 Linux/macOS 같은 POSIX shell 환경도 같이 지원합니다.
+Korean summary: `OpenAI Codex CLI` 하단 footer/status line 에 마지막 질문을 `Q: ...` 형태로 보여주는 패치와 설치 스크립트입니다. Windows PowerShell 뿐 아니라 Linux/macOS 같은 POSIX shell 환경에서 `npx` 설치 흐름도 지원합니다.
 
 Example:
 
@@ -26,13 +28,14 @@ gpt-5.4 · gpt-5.4 high · 5h 99% · weekly 68% · Q: fix the footer layout bug
 
 ## Why This Exists
 
-OpenAI Codex CLI supports session resume, but it does not clearly surface the latest prompt in the live footer. This project adds a small but useful quality-of-life feature:
+OpenAI Codex CLI supports session resume, but it does not clearly surface the latest prompt in the live footer. This project adds a focused quality-of-life feature:
 
 - shows the latest submitted prompt in the Codex CLI footer
 - keeps the existing Codex status line behavior
 - normalizes multiline prompts into a single-line preview
 - truncates long prompts so terminal layout stays stable
 - supports Windows and POSIX-style environments
+- adds an npm package entrypoint for Linux/macOS
 - installs as `codex`, so you keep using your normal command
 
 ## Features
@@ -41,6 +44,7 @@ OpenAI Codex CLI supports session resume, but it does not clearly surface the la
 - Patch file for the official `openai/codex` source
 - Windows installer and restore scripts
 - Linux/macOS installer and restore scripts
+- `npx` entrypoint for Linux/macOS install, build, and restore
 - Local build scripts for patched Codex binaries
 - Backups of original launchers before replacement
 
@@ -55,20 +59,35 @@ If OpenAI changes the footer implementation or internal struct layout in a futur
 
 ## Quick Install
 
+### Linux / macOS with npx
+
+After publishing this package to npm, the shortest install command is:
+
+```bash
+npx codex-last-prompt-footer
+```
+
+Additional commands:
+
+```bash
+npx codex-last-prompt-footer build
+npx codex-last-prompt-footer restore
+```
+
+### Linux / macOS from GitHub
+
+```bash
+git clone https://github.com/bic98/codex-last-prompt-footer.git
+cd codex-last-prompt-footer
+bash ./scripts/install.sh
+```
+
 ### Windows PowerShell
 
 ```powershell
 git clone https://github.com/bic98/codex-last-prompt-footer.git
 cd codex-last-prompt-footer
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
-```
-
-### Linux / macOS
-
-```bash
-git clone https://github.com/bic98/codex-last-prompt-footer.git
-cd codex-last-prompt-footer
-bash ./scripts/install.sh
 ```
 
 ## What The Installer Does
@@ -95,6 +114,8 @@ The installer will:
 
 ### Linux / macOS
 
+- `node` 18+
+- `npm` or `npx` for the package entrypoint
 - `bash`
 - `git`
 - `curl`
@@ -113,21 +134,45 @@ Submit prompts normally. The footer will append a `Q: ...` preview based on your
 
 ## Uninstall / Restore Original Codex
 
+### Linux / macOS with npx
+
+```bash
+npx codex-last-prompt-footer restore
+```
+
+### Linux / macOS from GitHub
+
+```bash
+bash ./scripts/restore.sh
+```
+
 ### Windows
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\restore.ps1
 ```
 
-### Linux / macOS
-
-```bash
-bash ./scripts/restore.sh
-```
-
 This restores the original OpenAI Codex launchers from backup and removes the custom binary folder.
 
 ## Build Without Installing
+
+### Linux / macOS with npx
+
+```bash
+npx codex-last-prompt-footer build
+```
+
+### Linux / macOS from GitHub
+
+```bash
+bash ./scripts/build.sh
+```
+
+Output:
+
+```text
+dist/posix/codex
+```
 
 ### Windows
 
@@ -141,17 +186,18 @@ Output:
 dist/windows/codex.exe
 ```
 
-### Linux / macOS
+## Publish To npm
+
+This repository already includes `package.json` and a Node CLI wrapper, so publishing is the remaining step for `npx codex-last-prompt-footer` to work from the public npm registry.
+
+Typical release flow:
 
 ```bash
-bash ./scripts/build.sh
+npm login
+npm publish --access public
 ```
 
-Output:
-
-```text
-dist/posix/codex
-```
+If the package name is already taken on npm, publish under a scoped package name such as `@bic98/codex-last-prompt-footer` and update the README install command accordingly.
 
 ## Manual Patch Workflow
 
@@ -169,6 +215,8 @@ cargo +stable build -p codex-cli --release
 ## Repository Layout
 
 ```text
+bin/
+  codex-last-prompt-footer.mjs
 patches/
   codex-v0.114.0-last-prompt-footer.patch
 scripts/
@@ -178,8 +226,10 @@ scripts/
   install.sh
   restore.ps1
   restore.sh
+package.json
 README.md
 GITHUB_METADATA.md
+LICENSE
 ```
 
 ## Search Terms
@@ -196,6 +246,8 @@ Useful search phrases for GitHub search and AI indexing:
 - `openai codex prompt preview`
 - `codex footer patch`
 - `codex cli latest prompt`
+- `codex cli npx install`
+- `openai codex cli npx`
 - `how to show latest question in codex cli`
 - `openai codex cli prompt shown in footer`
 
@@ -205,6 +257,7 @@ Useful search phrases for GitHub search and AI indexing:
 - The installer rewires the existing launcher to a patched native binary.
 - Original launchers are backed up with the `.openai-backup` suffix before replacement.
 - On Linux/macOS, if your Codex launcher directory is not writable, run the installer with the permissions required for your install method or copy the built binary manually.
+- The `npx` command works after you publish the package to npm.
 
 ## SEO / Discoverability Notes
 
@@ -215,7 +268,8 @@ To make this repository easier to discover on GitHub and by AI tools, the README
 - Codex CLI prompt history
 - Codex status line patch
 - latest prompt in footer
-- Windows, Linux, and macOS Codex installation
 - OpenAI Codex CLI latest prompt
 - OpenAI Codex CLI footer customization
-
+- npx install for Codex CLI
+- Linux and macOS Codex npx package
+- Windows, Linux, and macOS Codex installation

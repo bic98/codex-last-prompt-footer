@@ -1,0 +1,42 @@
+{
+  "name": "codex-last-prompt-footer",
+  "version": "0.114.0",
+  "description": "Patch and installer for OpenAI Codex CLI that shows your latest prompt in the footer status line on Linux, macOS, and Windows.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "codex-last-prompt-footer": "./bin/codex-last-prompt-footer.mjs"
+  },
+  "files": [
+    "bin",
+    "patches",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "GITHUB_METADATA.md"
+  ],
+  "keywords": [
+    "codex",
+    "codex-cli",
+    "openai",
+    "openai-codex",
+    "prompt-history",
+    "status-line",
+    "footer",
+    "linux",
+    "macos",
+    "windows",
+    "npx"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bic98/codex-last-prompt-footer.git"
+  },
+  "homepage": "https://github.com/bic98/codex-last-prompt-footer#readme",
+  "bugs": {
+    "url": "https://github.com/bic98/codex-last-prompt-footer/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -6,11 +6,9 @@ Use these values when publishing the repository so GitHub search and AI indexing
 
 `codex-last-prompt-footer`
 
-If you already created `-codex-last-prompt-footer`, that is still fine. The cleaner long-term name is `codex-last-prompt-footer`.
-
 ## Recommended Short Description
 
-Patch and installer for OpenAI Codex CLI that shows your latest prompt in the footer status line on Windows, Linux, and macOS.
+Patch and installer for OpenAI Codex CLI that shows your latest prompt in the footer status line, with npx install support for Linux and macOS.
 
 ## Recommended Topics
 
@@ -23,6 +21,8 @@ Patch and installer for OpenAI Codex CLI that shows your latest prompt in the fo
 - `footer`
 - `powershell`
 - `bash`
+- `npx`
+- `npm`
 - `linux`
 - `macos`
 - `windows`
@@ -34,7 +34,7 @@ Patch and installer for OpenAI Codex CLI that shows your latest prompt in the fo
 
 ## Suggested Social Preview Text
 
-Show your latest prompt directly in the Codex CLI footer. Includes Windows and Linux/macOS install scripts plus a patch for OpenAI Codex CLI 0.114.0.
+Show your latest prompt directly in the Codex CLI footer. Includes Windows and Linux/macOS install scripts, plus an npm-ready npx entrypoint for OpenAI Codex CLI 0.114.0.
 
 ## Search Keywords To Reuse Naturally
 
@@ -43,6 +43,8 @@ Show your latest prompt directly in the Codex CLI footer. Includes Windows and L
 - Codex footer
 - Codex status line
 - latest prompt in footer
+- Codex CLI npx install
+- OpenAI Codex CLI npx
 - Windows Codex installer
 - Linux Codex installer
 - macOS Codex installer
