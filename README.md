@@ -4,6 +4,8 @@ Show your latest prompt directly in the OpenAI Codex CLI footer and status line.
 
 `Codex Last Prompt Footer` is a patch and installer for `OpenAI Codex CLI` that adds a `Q: ...` preview of your latest submitted prompt to the bottom footer, next to status items like model, reasoning level, `5h` usage, and `weekly` usage.
 
+It is intended for developers looking for an easy way to add `latest prompt`, `prompt history preview`, `footer text`, or `status line customization` to the official OpenAI Codex CLI on Windows, Linux, and macOS.
+
 This repository is for people searching for:
 
 - `OpenAI Codex CLI footer`
@@ -56,16 +58,16 @@ If OpenAI changes the footer implementation or internal struct layout in a futur
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/bic98/-codex-last-prompt-footer.git
-cd -codex-last-prompt-footer
+git clone https://github.com/bic98/codex-last-prompt-footer.git
+cd codex-last-prompt-footer
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
 
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/bic98/-codex-last-prompt-footer.git
-cd -codex-last-prompt-footer
+git clone https://github.com/bic98/codex-last-prompt-footer.git
+cd codex-last-prompt-footer
 bash ./scripts/install.sh
 ```
 
@@ -194,6 +196,8 @@ Useful search phrases for GitHub search and AI indexing:
 - `openai codex prompt preview`
 - `codex footer patch`
 - `codex cli latest prompt`
+- `how to show latest question in codex cli`
+- `openai codex cli prompt shown in footer`
 
 ## Notes
 
@@ -212,3 +216,6 @@ To make this repository easier to discover on GitHub and by AI tools, the README
 - Codex status line patch
 - latest prompt in footer
 - Windows, Linux, and macOS Codex installation
+- OpenAI Codex CLI latest prompt
+- OpenAI Codex CLI footer customization
+
