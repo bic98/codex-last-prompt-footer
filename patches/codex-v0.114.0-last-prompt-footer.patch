@@ -1,5 +1,63 @@
+diff --git a/codex-rs/tui/src/bottom_pane/snapshots/codex_tui__bottom_pane__status_line_setup__tests__setup_view_snapshot_uses_runtime_preview_values.snap b/codex-rs/tui/src/bottom_pane/snapshots/codex_tui__bottom_pane__status_line_setup__tests__setup_view_snapshot_uses_runtime_preview_values.snap
+index 000c7d898..3d8308773 100644
+--- a/codex-rs/tui/src/bottom_pane/snapshots/codex_tui__bottom_pane__status_line_setup__tests__setup_view_snapshot_uses_runtime_preview_values.snap
++++ b/codex-rs/tui/src/bottom_pane/snapshots/codex_tui__bottom_pane__status_line_setup__tests__setup_view_snapshot_uses_runtime_preview_values.snap
+@@ -12,11 +12,11 @@ expression: "render_lines(&view, 72)"
+ › [x] model-name            Current model name                          
+   [x] current-dir           Current working directory                   
+   [x] git-branch            Current Git branch (omitted when unavaila…  
++  [x] last-prompt           Most recent submitted prompt preview (omi…  
+   [ ] model-with-reasoning  Current model name with reasoning level     
+   [ ] project-root          Project root directory (omitted when unav…  
+   [ ] context-remaining     Percentage of context window remaining (o…  
+   [ ] context-used          Percentage of context window used (omitte…  
+-  [ ] five-hour-limit       Remaining usage on 5-hour usage limit (om…  
+                                                                         
+-  gpt-5-codex · ~/codex-rs · jif/statusline-preview                     
+-  Use ↑↓ to navigate, ←→ to move, space to select, enter to confirm, esc
++  gpt-5-codex · ~/codex-rs · jif/statusline-preview · Q: fix footer tr… 
++  Use ↑↓ to navigate, ←→ to move, space to select, enter to confirm, esc
+\ No newline at end of file
+diff --git a/codex-rs/tui/src/bottom_pane/status_line_setup.rs b/codex-rs/tui/src/bottom_pane/status_line_setup.rs
+index 076ce5090..1d765a676 100644
+--- a/codex-rs/tui/src/bottom_pane/status_line_setup.rs
++++ b/codex-rs/tui/src/bottom_pane/status_line_setup.rs
+@@ -93,6 +93,9 @@ pub(crate) enum StatusLineItem {
+     /// Full session UUID.
+     SessionId,
+ 
++    /// Most recent submitted prompt preview.
++    LastPrompt,
++
+     /// Whether Fast mode is currently active.
+     FastMode,
+ }
+@@ -128,6 +131,7 @@ impl StatusLineItem {
+             StatusLineItem::SessionId => {
+                 "Current session identifier (omitted until session starts)"
+             }
++            StatusLineItem::LastPrompt => "Most recent submitted prompt preview (omitted until you send one)",
+             StatusLineItem::FastMode => "Whether Fast mode is currently active",
+         }
+     }
+@@ -353,6 +357,7 @@ mod tests {
+                 StatusLineItem::ModelName.to_string(),
+                 StatusLineItem::CurrentDir.to_string(),
+                 StatusLineItem::GitBranch.to_string(),
++                StatusLineItem::LastPrompt.to_string(),
+             ]),
+             StatusLinePreviewData::from_iter([
+                 (StatusLineItem::ModelName, "gpt-5-codex".to_string()),
+@@ -362,6 +367,7 @@ mod tests {
+                     "jif/statusline-preview".to_string(),
+                 ),
+                 (StatusLineItem::WeeklyLimit, "weekly 82%".to_string()),
++                (StatusLineItem::LastPrompt, "Q: fix footer truncation".to_string()),
+             ]),
+             AppEventSender::new(tx_raw),
+         );
 diff --git a/codex-rs/tui/src/chatwidget.rs b/codex-rs/tui/src/chatwidget.rs
-index 7fdc294da..7643521cc 100644
+index 7fdc294da..ee33314e4 100644
 --- a/codex-rs/tui/src/chatwidget.rs
 +++ b/codex-rs/tui/src/chatwidget.rs
 @@ -29,6 +29,7 @@ use std::collections::BTreeMap;
@@ -38,17 +96,7 @@ index 7fdc294da..7643521cc 100644
      // Runtime network proxy bind addresses from SessionConfigured.
      session_network_proxy: Option<codex_protocol::protocol::SessionNetworkProxyRuntime>,
      // Shared latch so we only warn once about invalid status-line item IDs.
-@@ -1141,6 +1156,9 @@ impl ChatWidget {
-         let line = if parts.is_empty() {
-             None
-         } else {
-+            if let Some(prompt) = self.status_line_prompt_label() {
-+                parts.push(prompt);
-+            }
-             Some(Line::from(parts.join(" · ")))
-         };
-         self.set_status_line(line);
-@@ -1189,6 +1207,29 @@ impl ChatWidget {
+@@ -1189,6 +1204,29 @@ impl ChatWidget {
          self.request_status_line_branch(cwd);
      }
  
@@ -78,7 +126,7 @@ index 7fdc294da..7643521cc 100644
      fn collect_runtime_metrics_delta(&mut self) {
          if let Some(delta) = self.session_telemetry.runtime_metrics_summary() {
              self.apply_runtime_metrics_delta(delta);
-@@ -3290,6 +3331,7 @@ impl ChatWidget {
+@@ -3290,6 +3328,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -86,7 +134,7 @@ index 7fdc294da..7643521cc 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
-@@ -3474,6 +3516,7 @@ impl ChatWidget {
+@@ -3474,6 +3513,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -94,7 +142,7 @@ index 7fdc294da..7643521cc 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
-@@ -3650,6 +3693,7 @@ impl ChatWidget {
+@@ -3650,6 +3690,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -102,8 +150,16 @@ index 7fdc294da..7643521cc 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
+@@ -5507,6 +5548,7 @@ impl ChatWidget {
+                 format_tokens_compact(self.status_line_total_usage().output_tokens)
+             )),
+             StatusLineItem::SessionId => self.thread_id.map(|id| id.to_string()),
++            StatusLineItem::LastPrompt => self.status_line_prompt_label(),
+             StatusLineItem::FastMode => Some(
+                 if matches!(self.config.service_tier, Some(ServiceTier::Fast)) {
+                     "Fast on".to_string()
 diff --git a/codex-rs/tui/src/chatwidget/tests.rs b/codex-rs/tui/src/chatwidget/tests.rs
-index 0896adc07..710430722 100644
+index 0896adc07..dd993ae8b 100644
 --- a/codex-rs/tui/src/chatwidget/tests.rs
 +++ b/codex-rs/tui/src/chatwidget/tests.rs
 @@ -1888,6 +1888,7 @@ async fn make_chatwidget_manual(
@@ -122,7 +178,7 @@ index 0896adc07..710430722 100644
 +async fn status_line_appends_last_submitted_prompt_preview() {
 +    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
 +    chat.thread_id = Some(ThreadId::new());
-+    chat.config.tui_status_line = Some(vec!["model-name".to_string()]);
++    chat.config.tui_status_line = Some(vec!["model-name".to_string(), "last-prompt".to_string()]);
 +    chat.refresh_status_line();
 +    assert_eq!(status_line_text(&chat), Some("gpt-5.4".to_string()));
 +

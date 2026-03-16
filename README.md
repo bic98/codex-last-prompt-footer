@@ -121,9 +121,24 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --acc
 
 The Windows install also creates a persistent user shim instead of replacing npm's global `codex.cmd` / `codex.ps1` launchers.
 
+## Status Line Setup
+
+The footer now integrates with Codex's built-in `/statusline` picker. Open it and enable `last-prompt` just like the other status line items.
+
+Example:
+
+```text
+Configure Status Line
+› [x] model-name
+  [x] weekly-limit
+  [x] last-prompt
+```
+
+When `last-prompt` is enabled, Codex shows your most recent submitted prompt as `Q: ...` in the status line.
+
 ## Footer Toggle
 
-After install, the footer preview is on by default.
+If you want a global override outside the TUI, the installer also supports an external enable/disable switch. This is optional and separate from the `/statusline` item selection.
 
 Linux / macOS:
 
