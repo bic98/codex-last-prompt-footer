@@ -158,6 +158,19 @@ index 7fdc294da..ee33314e4 100644
              StatusLineItem::FastMode => Some(
                  if matches!(self.config.service_tier, Some(ServiceTier::Fast)) {
                      "Fast on".to_string()
+@@ -4574,6 +4616,11 @@ impl ChatWidget {
+             });
+             return;
+         }
++
++        if !text.is_empty() {
++            self.set_last_submitted_prompt(&text);
++            self.refresh_status_line();
++        }
+ 
+         for image_url in &remote_image_urls {
+             items.push(UserInput::Image {
+                 image_url: image_url.clone(),
 diff --git a/codex-rs/tui/src/chatwidget/tests.rs b/codex-rs/tui/src/chatwidget/tests.rs
 index 0896adc07..dd993ae8b 100644
 --- a/codex-rs/tui/src/chatwidget/tests.rs
