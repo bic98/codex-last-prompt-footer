@@ -88,6 +88,18 @@ cd codex-last-prompt-footer
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
 
+If Visual Studio Build Tools are missing, let the installer attempt to install them:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallDeps
+```
+
+Manual alternative:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --accept-source-agreements --accept-package-agreements --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
 ## Linux / macOS Troubleshooting
 
 Codex CLI is a Rust binary. This installer tries a matching GitHub Release binary first. If none exists for your OS and CPU, it falls back to a local Rust build, and that build may fail on Linux if native development headers are missing (`openssl`, `libcap`, `pkg-config`).
