@@ -166,25 +166,32 @@ function Ensure-Rust {
 }
 
 function Invoke-CargoBuild {
-    $output = & cargo +stable build -p codex-cli --release --locked 2>&1
-    $exitCode = $LASTEXITCODE
-    $output | ForEach-Object { $_ }
+    $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
 
-    if ($exitCode -eq 0) {
-        return
-    }
+    try {
+        $output = & cargo +stable build -p codex-cli --release --locked 2>&1
+        $exitCode = $LASTEXITCODE
+        $output | ForEach-Object { $_ }
 
-    $outputText = ($output | Out-String)
-    if ($outputText -match 'cannot update the lock file|lock file .*needs to be updated|Cargo\.lock') {
-        Write-Step "Cargo.lock needs an update for this platform; retrying without --locked"
-        & cargo +stable build -p codex-cli --release
-        if ($LASTEXITCODE -ne 0) {
-            throw "cargo build failed with exit code $LASTEXITCODE"
+        if ($exitCode -eq 0) {
+            return
         }
-        return
-    }
 
-    throw "cargo build failed with exit code $exitCode"
+        $outputText = ($output | Out-String)
+        if ($outputText -match 'cannot update the lock file|lock file .*needs to be updated|Cargo\.lock') {
+            Write-Step "Cargo.lock needs an update for this platform; retrying without --locked"
+            & cargo +stable build -p codex-cli --release
+            if ($LASTEXITCODE -ne 0) {
+                throw "cargo build failed with exit code $LASTEXITCODE"
+            }
+            return
+        }
+
+        throw "cargo build failed with exit code $exitCode"
+    } finally {
+        $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+    }
 }
 
 Ensure-Command git
