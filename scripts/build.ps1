@@ -166,8 +166,11 @@ function Ensure-Rust {
 }
 
 function Invoke-CargoBuild {
-    $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
-    $PSNativeCommandUseErrorActionPreference = $false
+    $hadNativeErrorPreference = Test-Path Variable:\PSNativeCommandUseErrorActionPreference
+    if ($hadNativeErrorPreference) {
+        $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+        $PSNativeCommandUseErrorActionPreference = $false
+    }
 
     try {
         $output = & cargo +stable build -p codex-cli --release --locked 2>&1
@@ -190,7 +193,9 @@ function Invoke-CargoBuild {
 
         throw "cargo build failed with exit code $exitCode"
     } finally {
-        $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+        if ($hadNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+        }
     }
 }
 
