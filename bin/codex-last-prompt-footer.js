@@ -12,6 +12,9 @@ const scripts = {
   install: path.join(repoRoot, 'scripts', 'install.sh'),
   build: path.join(repoRoot, 'scripts', 'build.sh'),
   restore: path.join(repoRoot, 'scripts', 'restore.sh'),
+  enable: path.join(repoRoot, 'scripts', 'control.sh'),
+  disable: path.join(repoRoot, 'scripts', 'control.sh'),
+  status: path.join(repoRoot, 'scripts', 'control.sh'),
 };
 
 const args = process.argv.slice(2);
@@ -30,11 +33,17 @@ Usage:
   npx codex-last-prompt-footer install
   npx codex-last-prompt-footer build
   npx codex-last-prompt-footer restore
+  npx codex-last-prompt-footer enable
+  npx codex-last-prompt-footer disable
+  npx codex-last-prompt-footer status
 
 Commands:
   install   Build and install the patched Codex CLI footer shim on Linux/macOS
   build     Build the patched Codex binary only
   restore   Remove the persistent Codex shim
+  enable    Enable the footer preview in the installed shim
+  disable   Disable the footer preview in the installed shim
+  status    Show whether the footer preview is enabled
   help      Show this help text
 
 Options:
@@ -71,7 +80,11 @@ if (!existsSync(scriptPath)) {
   process.exit(1);
 }
 
-const result = spawnSync('bash', [scriptPath, ...passthroughArgs], {
+const scriptArgs = ['enable', 'disable', 'status'].includes(command)
+  ? [command, ...passthroughArgs]
+  : passthroughArgs;
+
+const result = spawnSync('bash', [scriptPath, ...scriptArgs], {
   cwd: repoRoot,
   stdio: 'inherit',
   env: process.env,

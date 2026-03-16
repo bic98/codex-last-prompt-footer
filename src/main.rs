@@ -32,6 +32,11 @@ const FILES: &[EmbeddedFile] = &[
         executable: true,
     },
     EmbeddedFile {
+        relative_path: "scripts/control.sh",
+        contents: include_str!("../scripts/control.sh"),
+        executable: true,
+    },
+    EmbeddedFile {
         relative_path: "scripts/build.ps1",
         contents: include_str!("../scripts/build.ps1"),
         executable: false,
@@ -44,6 +49,11 @@ const FILES: &[EmbeddedFile] = &[
     EmbeddedFile {
         relative_path: "scripts/restore.ps1",
         contents: include_str!("../scripts/restore.ps1"),
+        executable: false,
+    },
+    EmbeddedFile {
+        relative_path: "scripts/control.ps1",
+        contents: include_str!("../scripts/control.ps1"),
         executable: false,
     },
     EmbeddedFile {
@@ -63,11 +73,17 @@ Usage:
   codex-last-prompt-footer install
   codex-last-prompt-footer build
   codex-last-prompt-footer restore
+  codex-last-prompt-footer enable
+  codex-last-prompt-footer disable
+  codex-last-prompt-footer status
 
 Commands:
-  install   Build and install the patched Codex CLI footer
+  install   Build and install the patched Codex CLI footer shim
   build     Build the patched Codex binary only
-  restore   Restore the original Codex launcher backup
+  restore   Remove the persistent Codex shim
+  enable    Enable the footer preview in the installed shim
+  disable   Disable the footer preview in the installed shim
+  status    Show whether the footer preview is enabled
   help      Show this help text
 
 Options:
@@ -105,7 +121,9 @@ fn parse_args() -> Result<(String, Vec<String>), String> {
     }
 
     match command.as_str() {
-        "install" | "build" | "restore" => Ok((command, passthrough)),
+        "install" | "build" | "restore" | "enable" | "disable" | "status" => {
+            Ok((command, passthrough))
+        }
         _ => Err(format!("Unknown command: {command}")),
     }
 }
@@ -140,6 +158,7 @@ fn script_name(command: &str) -> &'static str {
         "install" => "scripts/install.ps1",
         "build" => "scripts/build.ps1",
         "restore" => "scripts/restore.ps1",
+        "enable" | "disable" | "status" => "scripts/control.ps1",
         _ => unreachable!(),
     }
 }
@@ -150,12 +169,21 @@ fn script_name(command: &str) -> &'static str {
         "install" => "scripts/install.sh",
         "build" => "scripts/build.sh",
         "restore" => "scripts/restore.sh",
+        "enable" | "disable" | "status" => "scripts/control.sh",
         _ => unreachable!(),
     }
 }
 
 fn run_command(root: &Path, command: &str, passthrough: &[String]) -> io::Result<i32> {
     let script_path: PathBuf = root.join(script_name(command));
+    let script_args: Vec<String> = match command {
+        "enable" | "disable" | "status" => {
+            let mut args = vec![command.to_string()];
+            args.extend_from_slice(passthrough);
+            args
+        }
+        _ => passthrough.to_vec(),
+    };
 
     #[cfg(target_os = "windows")]
     let status = {
@@ -165,7 +193,7 @@ fn run_command(root: &Path, command: &str, passthrough: &[String]) -> io::Result
             .arg("Bypass")
             .arg("-File")
             .arg(&script_path)
-            .args(passthrough)
+            .args(&script_args)
             .current_dir(root);
         child.status()?
     };
@@ -173,7 +201,7 @@ fn run_command(root: &Path, command: &str, passthrough: &[String]) -> io::Result
     #[cfg(not(target_os = "windows"))]
     let status = {
         let mut child = Command::new("bash");
-        child.arg(&script_path).args(passthrough).current_dir(root);
+        child.arg(&script_path).args(&script_args).current_dir(root);
         child.status()?
     };
 

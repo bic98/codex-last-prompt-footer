@@ -8,6 +8,8 @@ OUTPUT_DIR="${OUTPUT_DIR:-$STATE_DIR/dist/posix}"
 BUILT_BIN="$OUTPUT_DIR/codex"
 WRAPPER_DIR="${WRAPPER_DIR:-$STATE_DIR/shims/posix/bin}"
 PROFILE_SNIPPET="$STATE_DIR/shims/posix/env.sh"
+CONFIG_DIR="$STATE_DIR/config"
+FOOTER_STATE_FILE="$CONFIG_DIR/footer-enabled"
 MARKER_BEGIN="# >>> codex-last-prompt-footer >>>"
 MARKER_END="# <<< codex-last-prompt-footer <<<"
 
@@ -50,6 +52,11 @@ fi
 
 mkdir -p "$WRAPPER_DIR"
 mkdir -p "$(dirname "$PROFILE_SNIPPET")"
+mkdir -p "$CONFIG_DIR"
+
+if [[ ! -f "$FOOTER_STATE_FILE" ]]; then
+  printf '1\n' > "$FOOTER_STATE_FILE"
+fi
 
 cat > "$PROFILE_SNIPPET" <<EOF
 export PATH="$WRAPPER_DIR:\$PATH"
@@ -57,6 +64,11 @@ EOF
 
 cat > "$WRAPPER_DIR/codex" <<EOF
 #!/usr/bin/env bash
+footer_state="1"
+if [[ -f "$FOOTER_STATE_FILE" ]]; then
+  footer_state="\$(tr -d '[:space:]' < "$FOOTER_STATE_FILE")"
+fi
+export CODEX_LAST_PROMPT_FOOTER="\${footer_state:-1}"
 exec "$BUILT_BIN" "\$@"
 EOF
 chmod +x "$WRAPPER_DIR/codex"

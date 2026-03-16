@@ -35,6 +35,8 @@ $stateDir = Join-Path $HOME ".codex-last-prompt-footer"
 $outputDir = Join-Path $stateDir "dist\windows"
 $builtExe = Join-Path $outputDir "codex.exe"
 $shimDir = Join-Path $stateDir "shims\windows"
+$configDir = Join-Path $stateDir "config"
+$footerStateFile = Join-Path $configDir "footer-enabled"
 
 Write-Step "Preparing patched codex binary"
 & $buildScript -CodexTag $CodexTag -OutputDir $outputDir -InstallDeps:$InstallDeps
@@ -47,6 +49,11 @@ if (-not (Test-Path $builtExe)) {
 }
 
 New-Item -ItemType Directory -Force $shimDir | Out-Null
+New-Item -ItemType Directory -Force $configDir | Out-Null
+
+if (-not (Test-Path $footerStateFile)) {
+    Set-Content -Path $footerStateFile -Value "1"
+}
 
 $cmdPath = Join-Path $shimDir "codex.cmd"
 $ps1Path = Join-Path $shimDir "codex.ps1"
@@ -54,6 +61,9 @@ $ps1Path = Join-Path $shimDir "codex.ps1"
 $cmdContent = @(
     '@ECHO off',
     'SETLOCAL',
+    "SET ""FOOTER_STATE_FILE=$footerStateFile""",
+    'SET "CODEX_LAST_PROMPT_FOOTER=1"',
+    'IF EXIST "%FOOTER_STATE_FILE%" SET /P CODEX_LAST_PROMPT_FOOTER=<"%FOOTER_STATE_FILE%"',
     "SET ""PATCHED_CODEX=$builtExe""",
     '"%PATCHED_CODEX%" %*'
 )
@@ -61,6 +71,11 @@ $cmdContent = @(
 $ps1Content = @(
     '#!/usr/bin/env pwsh',
     '$patchedCodex = "' + $builtExe.Replace('\', '\\') + '"',
+    '$footerStateFile = "' + $footerStateFile.Replace('\', '\\') + '"',
+    '$env:CODEX_LAST_PROMPT_FOOTER = "1"',
+    'if (Test-Path $footerStateFile) {',
+    '  $env:CODEX_LAST_PROMPT_FOOTER = (Get-Content -Path $footerStateFile -Raw).Trim()',
+    '}',
     '',
     'if ($MyInvocation.ExpectingInput) {',
     '  $input | & $patchedCodex $args',

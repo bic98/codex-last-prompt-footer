@@ -1,16 +1,35 @@
 diff --git a/codex-rs/tui/src/chatwidget.rs b/codex-rs/tui/src/chatwidget.rs
-index 7fdc294..ea40f28 100644
+index 7fdc294da..7643521cc 100644
 --- a/codex-rs/tui/src/chatwidget.rs
 +++ b/codex-rs/tui/src/chatwidget.rs
-@@ -376,6 +376,7 @@ fn is_standard_tool_call(parsed_cmd: &[ParsedCommand]) -> bool {
+@@ -29,6 +29,7 @@ use std::collections::BTreeMap;
+ use std::collections::HashMap;
+ use std::collections::HashSet;
+ use std::collections::VecDeque;
++use std::env;
+ use std::path::Path;
+ use std::path::PathBuf;
+ use std::sync::Arc;
+@@ -376,6 +377,18 @@ fn is_standard_tool_call(parsed_cmd: &[ParsedCommand]) -> bool {
  const RATE_LIMIT_WARNING_THRESHOLDS: [f64; 3] = [75.0, 90.0, 95.0];
  const NUDGE_MODEL_SLUG: &str = "gpt-5.1-codex-mini";
  const RATE_LIMIT_SWITCH_PROMPT_THRESHOLD: f64 = 90.0;
 +const STATUS_LINE_PROMPT_PREVIEW_GRAPHEMES: usize = 80;
++const STATUS_LINE_PROMPT_ENV_VAR: &str = "CODEX_LAST_PROMPT_FOOTER";
++
++fn status_line_prompt_enabled() -> bool {
++    match env::var(STATUS_LINE_PROMPT_ENV_VAR) {
++        Ok(value) => {
++            let normalized = value.trim().to_ascii_lowercase();
++            !matches!(normalized.as_str(), "0" | "false" | "off" | "no")
++        }
++        Err(_) => true,
++    }
++}
  
  #[derive(Default)]
  struct RateLimitWarningState {
-@@ -691,6 +692,8 @@ pub(crate) struct ChatWidget {
+@@ -691,6 +704,8 @@ pub(crate) struct ChatWidget {
      current_rollout_path: Option<PathBuf>,
      // Current working directory (if known)
      current_cwd: Option<PathBuf>,
@@ -19,7 +38,7 @@ index 7fdc294..ea40f28 100644
      // Runtime network proxy bind addresses from SessionConfigured.
      session_network_proxy: Option<codex_protocol::protocol::SessionNetworkProxyRuntime>,
      // Shared latch so we only warn once about invalid status-line item IDs.
-@@ -1141,6 +1144,9 @@ impl ChatWidget {
+@@ -1141,6 +1156,9 @@ impl ChatWidget {
          let line = if parts.is_empty() {
              None
          } else {
@@ -29,7 +48,7 @@ index 7fdc294..ea40f28 100644
              Some(Line::from(parts.join(" · ")))
          };
          self.set_status_line(line);
-@@ -1189,6 +1195,25 @@ impl ChatWidget {
+@@ -1189,6 +1207,29 @@ impl ChatWidget {
          self.request_status_line_branch(cwd);
      }
  
@@ -47,6 +66,10 @@ index 7fdc294..ea40f28 100644
 +    }
 +
 +    fn status_line_prompt_label(&self) -> Option<String> {
++        if !status_line_prompt_enabled() {
++            return None;
++        }
++
 +        self.last_submitted_prompt
 +            .as_ref()
 +            .map(|prompt| format!("Q: {prompt}"))
@@ -55,7 +78,7 @@ index 7fdc294..ea40f28 100644
      fn collect_runtime_metrics_delta(&mut self) {
          if let Some(delta) = self.session_telemetry.runtime_metrics_summary() {
              self.apply_runtime_metrics_delta(delta);
-@@ -3290,6 +3315,7 @@ impl ChatWidget {
+@@ -3290,6 +3331,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -63,7 +86,7 @@ index 7fdc294..ea40f28 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
-@@ -3474,6 +3500,7 @@ impl ChatWidget {
+@@ -3474,6 +3516,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -71,7 +94,7 @@ index 7fdc294..ea40f28 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
-@@ -3650,6 +3677,7 @@ impl ChatWidget {
+@@ -3650,6 +3693,7 @@ impl ChatWidget {
              feedback_audience,
              current_rollout_path: None,
              current_cwd,
@@ -79,20 +102,8 @@ index 7fdc294..ea40f28 100644
              session_network_proxy: None,
              status_line_invalid_items_warned,
              status_line_branch: None,
-@@ -4533,6 +4561,11 @@ impl ChatWidget {
-             return;
-         }
- 
-+        if !text.is_empty() {
-+            self.set_last_submitted_prompt(&text);
-+            self.refresh_status_line();
-+        }
-+
-         for image_url in &remote_image_urls {
-             items.push(UserInput::Image {
-                 image_url: image_url.clone(),
 diff --git a/codex-rs/tui/src/chatwidget/tests.rs b/codex-rs/tui/src/chatwidget/tests.rs
-index 0896adc..7104307 100644
+index 0896adc07..710430722 100644
 --- a/codex-rs/tui/src/chatwidget/tests.rs
 +++ b/codex-rs/tui/src/chatwidget/tests.rs
 @@ -1888,6 +1888,7 @@ async fn make_chatwidget_manual(

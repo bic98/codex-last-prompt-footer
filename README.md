@@ -121,6 +121,30 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --acc
 
 The Windows install also creates a persistent user shim instead of replacing npm's global `codex.cmd` / `codex.ps1` launchers.
 
+## Footer Toggle
+
+After install, the footer preview is on by default.
+
+Linux / macOS:
+
+```bash
+npx --yes github:bic98/codex-last-prompt-footer status
+npx --yes github:bic98/codex-last-prompt-footer disable
+npx --yes github:bic98/codex-last-prompt-footer enable
+```
+
+If the npm package is current, the same commands also work with `npx codex-last-prompt-footer ...`.
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\control.ps1 Status
+powershell -ExecutionPolicy Bypass -File .\scripts\control.ps1 Disable
+powershell -ExecutionPolicy Bypass -File .\scripts\control.ps1 Enable
+```
+
+The installed shim reads `~/.codex-last-prompt-footer/config/footer-enabled` each time `codex` starts, so toggling does not require reinstalling anything.
+
 ## Linux / macOS Troubleshooting
 
 Codex CLI is a Rust binary. This installer tries a matching GitHub Release binary first. If none exists for your OS and CPU, it falls back to a local Rust build, and that build may fail on Linux if native development headers are missing (`openssl`, `libcap`, `pkg-config`).
@@ -166,6 +190,9 @@ Restore the original Codex launcher:
 
 ```bash
 npx codex-last-prompt-footer restore
+npx codex-last-prompt-footer status
+npx codex-last-prompt-footer disable
+npx codex-last-prompt-footer enable
 ```
 
 This removes the persistent shim and restores normal PATH resolution back to the official `codex` installation.
@@ -181,6 +208,9 @@ GitHub source alternative:
 ```bash
 npx --yes github:bic98/codex-last-prompt-footer restore
 npx --yes github:bic98/codex-last-prompt-footer build
+npx --yes github:bic98/codex-last-prompt-footer status
+npx --yes github:bic98/codex-last-prompt-footer disable
+npx --yes github:bic98/codex-last-prompt-footer enable
 ```
 
 Windows:
