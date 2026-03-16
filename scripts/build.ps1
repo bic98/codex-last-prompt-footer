@@ -166,36 +166,59 @@ function Ensure-Rust {
 }
 
 function Invoke-CargoBuild {
-    $hadNativeErrorPreference = Test-Path Variable:\PSNativeCommandUseErrorActionPreference
-    if ($hadNativeErrorPreference) {
-        $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
-        $PSNativeCommandUseErrorActionPreference = $false
+    $stdoutLog = Join-Path $env:TEMP "codex-last-prompt-footer-cargo-stdout.log"
+    $stderrLog = Join-Path $env:TEMP "codex-last-prompt-footer-cargo-stderr.log"
+
+    function Invoke-CargoProcess {
+        param([string[]]$Arguments)
+
+        Remove-Item $stdoutLog, $stderrLog -ErrorAction SilentlyContinue
+
+        $process = Start-Process -FilePath "cargo" `
+            -ArgumentList $Arguments `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutLog `
+            -RedirectStandardError $stderrLog
+
+        if (Test-Path $stdoutLog) {
+            Get-Content $stdoutLog
+        }
+        if (Test-Path $stderrLog) {
+            Get-Content $stderrLog
+        }
+
+        return $process.ExitCode
     }
 
     try {
-        $output = & cargo +stable build -p codex-cli --release --locked 2>&1
-        $exitCode = $LASTEXITCODE
-        $output | ForEach-Object { $_ }
+        $exitCode = Invoke-CargoProcess -Arguments @("+stable", "build", "-p", "codex-cli", "--release", "--locked")
 
         if ($exitCode -eq 0) {
             return
         }
 
-        $outputText = ($output | Out-String)
+        $outputText = ""
+        if (Test-Path $stdoutLog) {
+            $outputText += Get-Content $stdoutLog -Raw
+        }
+        if (Test-Path $stderrLog) {
+            $outputText += Get-Content $stderrLog -Raw
+        }
+
         if ($outputText -match 'cannot update the lock file|lock file .*needs to be updated|Cargo\.lock') {
             Write-Step "Cargo.lock needs an update for this platform; retrying without --locked"
-            & cargo +stable build -p codex-cli --release
-            if ($LASTEXITCODE -ne 0) {
-                throw "cargo build failed with exit code $LASTEXITCODE"
+            $exitCode = Invoke-CargoProcess -Arguments @("+stable", "build", "-p", "codex-cli", "--release")
+            if ($exitCode -ne 0) {
+                throw "cargo build failed with exit code $exitCode"
             }
             return
         }
 
         throw "cargo build failed with exit code $exitCode"
     } finally {
-        if ($hadNativeErrorPreference) {
-            $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
-        }
+        Remove-Item $stdoutLog, $stderrLog -ErrorAction SilentlyContinue
     }
 }
 
