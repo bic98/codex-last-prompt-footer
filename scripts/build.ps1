@@ -6,7 +6,8 @@ param(
     [string]$PatchFile = "",
     [string]$ReleaseRepository = "bic98/codex-last-prompt-footer",
     [string]$ReleaseTag = "",
-    [switch]$SkipPrebuiltDownload
+    [switch]$SkipPrebuiltDownload,
+    [switch]$InstallDeps
 )
 
 Set-StrictMode -Version Latest
@@ -22,6 +23,113 @@ function Ensure-Command {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Required command not found: $Name"
     }
+}
+
+function Get-VsWherePath {
+    $programFilesX86 = ${env:ProgramFiles(x86)}
+    if (-not $programFilesX86) {
+        return $null
+    }
+
+    $vswhere = Join-Path $programFilesX86 "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        return $vswhere
+    }
+
+    return $null
+}
+
+function Get-VisualStudioInstallPath {
+    $vswhere = Get-VsWherePath
+    if (-not $vswhere) {
+        return $null
+    }
+
+    $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if ($LASTEXITCODE -ne 0 -or -not $installPath) {
+        return $null
+    }
+
+    return $installPath
+}
+
+function Import-MsvcEnvironment {
+    if (Get-Command link.exe -ErrorAction SilentlyContinue) {
+        return $true
+    }
+
+    $installPath = Get-VisualStudioInstallPath
+    if (-not $installPath) {
+        return $false
+    }
+
+    $vsDevCmd = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
+    if (-not (Test-Path $vsDevCmd)) {
+        return $false
+    }
+
+    $envDump = & cmd.exe /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 >nul && set"
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    foreach ($line in $envDump) {
+        if ($line -match '^(.*?)=(.*)$') {
+            Set-Item -Path "Env:$($Matches[1])" -Value $Matches[2]
+        }
+    }
+
+    return [bool](Get-Command link.exe -ErrorAction SilentlyContinue)
+}
+
+function Show-MsvcBuildToolsHelp {
+    @"
+Missing Microsoft C++ Build Tools required for Rust's MSVC toolchain.
+
+Install Visual Studio Build Tools 2022 with the C++ workload, then rerun the installer.
+
+Recommended command:
+  winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget --accept-source-agreements --accept-package-agreements --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+Official download:
+  https://visualstudio.microsoft.com/downloads/
+"@ | Write-Error
+}
+
+function Install-MsvcBuildTools {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "winget is required for automatic Visual Studio Build Tools installation."
+    }
+
+    Write-Step "Installing Visual Studio Build Tools 2022 with C++ workload via winget"
+    & winget install `
+        --id Microsoft.VisualStudio.2022.BuildTools `
+        --source winget `
+        --accept-source-agreements `
+        --accept-package-agreements `
+        --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "winget installation failed with exit code $LASTEXITCODE"
+    }
+}
+
+function Ensure-WindowsBuildTools {
+    if (Import-MsvcEnvironment) {
+        return
+    }
+
+    if ($InstallDeps -or $env:AUTO_INSTALL_DEPS -eq "1") {
+        Install-MsvcBuildTools
+        if (Import-MsvcEnvironment) {
+            return
+        }
+
+        throw "Visual Studio Build Tools installation completed, but the MSVC environment is still unavailable. Restart PowerShell and retry."
+    }
+
+    Show-MsvcBuildToolsHelp
+    exit 1
 }
 
 function Get-PatchNameForTag {
@@ -249,6 +357,7 @@ if (-not $SkipPrebuiltDownload) {
 
 Ensure-Rust
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+Ensure-WindowsBuildTools
 
 if (-not (Test-Path $SourceDir)) {
     Write-Step "Cloning official openai/codex source (shallow) into $SourceDir"

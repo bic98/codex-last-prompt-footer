@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$CodexTag = "rust-v0.114.0"
+    [string]$CodexTag = "rust-v0.114.0",
+    [switch]$InstallDeps
 )
 
 Set-StrictMode -Version Latest
@@ -48,7 +49,7 @@ $buildScript = Join-Path $PSScriptRoot "build.ps1"
 $shimDir = Get-CodexLauncherDirectory
 
 Write-Step "Preparing patched codex binary"
-& $buildScript -CodexTag $CodexTag
+& $buildScript -CodexTag $CodexTag -InstallDeps:$InstallDeps
 if ($LASTEXITCODE -ne 0) {
     throw "build.ps1 failed with exit code $LASTEXITCODE"
 }
