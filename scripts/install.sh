@@ -6,28 +6,39 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_SCRIPT="$REPO_ROOT/scripts/build.sh"
 OUTPUT_DIR="${OUTPUT_DIR:-$STATE_DIR/dist/posix}"
 BUILT_BIN="$OUTPUT_DIR/codex"
+WRAPPER_DIR="${WRAPPER_DIR:-$STATE_DIR/shims/posix/bin}"
+PROFILE_SNIPPET="$STATE_DIR/shims/posix/env.sh"
+MARKER_BEGIN="# >>> codex-last-prompt-footer >>>"
+MARKER_END="# <<< codex-last-prompt-footer <<<"
 
 log() {
   printf '[codex-last-prompt-footer] %s\n' "$1"
 }
 
-find_codex_launcher() {
-  command -v codex 2>/dev/null || true
+remove_managed_block() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+    $0 == begin { skipping=1; next }
+    $0 == end { skipping=0; next }
+    !skipping { print }
+  ' "$file" > "$file.tmp"
+  mv "$file.tmp" "$file"
 }
 
-backup_if_needed() {
-  local path="$1"
-  if [[ -e "$path" && ! -e "$path.openai-backup" ]]; then
-    cp "$path" "$path.openai-backup"
-  fi
-}
-
-launcher="$(find_codex_launcher)"
-if [[ -z "$launcher" ]]; then
-  printf 'Could not locate the installed codex launcher.\n' >&2
-  printf 'Install the official Codex CLI first: npm install -g @openai/codex\n' >&2
-  exit 1
+ensure_profile_source_line() {
+  local file="$1"
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  remove_managed_block "$file"
+  cat >> "$file" <<EOF
+$MARKER_BEGIN
+if [ -f "$PROFILE_SNIPPET" ]; then
+  . "$PROFILE_SNIPPET"
 fi
+$MARKER_END
+EOF
+}
 
 log "Preparing patched codex binary"
 bash "$BUILD_SCRIPT" "$@"
@@ -37,21 +48,23 @@ if [[ ! -x "$BUILT_BIN" ]]; then
   exit 1
 fi
 
-shim_dir="$(cd "$(dirname "$launcher")" && pwd)"
-custom_dir="$shim_dir/custom-codex"
-mkdir -p "$custom_dir"
-cp "$BUILT_BIN" "$custom_dir/codex"
-chmod +x "$custom_dir/codex"
+mkdir -p "$WRAPPER_DIR"
+mkdir -p "$(dirname "$PROFILE_SNIPPET")"
 
-backup_if_needed "$launcher"
-
-cat > "$launcher" <<'EOF'
-#!/usr/bin/env bash
-basedir="$(cd "$(dirname "$0")" && pwd)"
-exec "$basedir/custom-codex/codex" "$@"
+cat > "$PROFILE_SNIPPET" <<EOF
+export PATH="$WRAPPER_DIR:\$PATH"
 EOF
-chmod +x "$launcher"
 
-log "Installed patched Codex launcher into $shim_dir"
-log "Original launcher was backed up with the .openai-backup suffix"
-log "Run 'codex --version' or launch 'codex' normally to test"
+cat > "$WRAPPER_DIR/codex" <<EOF
+#!/usr/bin/env bash
+exec "$BUILT_BIN" "\$@"
+EOF
+chmod +x "$WRAPPER_DIR/codex"
+
+for rc_file in "$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc"; do
+  ensure_profile_source_line "$rc_file"
+done
+
+log "Installed persistent Codex shim at $WRAPPER_DIR/codex"
+log "The official npm launcher is no longer modified."
+log "Open a new shell or run: export PATH=\"$WRAPPER_DIR:\$PATH\""

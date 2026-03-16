@@ -2,7 +2,7 @@
 param(
     [string]$CodexTag = "rust-v0.114.0",
     [string]$SourceDir = (Join-Path $HOME ".codex-last-prompt-footer\openai-codex"),
-    [string]$OutputDir = (Join-Path (Split-Path $PSScriptRoot -Parent) "dist\windows"),
+    [string]$OutputDir = (Join-Path $HOME ".codex-last-prompt-footer\dist\windows"),
     [string]$PatchFile = "",
     [string]$ReleaseRepository = "bic98/codex-last-prompt-footer",
     [string]$ReleaseTag = "",

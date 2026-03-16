@@ -32,9 +32,9 @@ Usage:
   npx codex-last-prompt-footer restore
 
 Commands:
-  install   Build and install the patched Codex CLI footer on Linux/macOS
+  install   Build and install the patched Codex CLI footer shim on Linux/macOS
   build     Build the patched Codex binary only
-  restore   Restore the original Codex launcher backup
+  restore   Remove the persistent Codex shim
   help      Show this help text
 
 Options:
