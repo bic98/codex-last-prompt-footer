@@ -38,6 +38,20 @@ gpt-5.4 · gpt-5.4 high · 5h 99% · weekly 68% · Q: fix the footer layout bug
 
 ## Install
 
+### Recommended: GitHub Source
+
+Until the npm package is republished with the latest installer flow, prefer running directly from GitHub:
+
+```bash
+npx --yes github:bic98/codex-last-prompt-footer
+```
+
+If Linux or macOS build dependencies are missing:
+
+```bash
+npx --yes github:bic98/codex-last-prompt-footer --install-deps
+```
+
 ### Fastest: GitHub Releases
 
 This repository now publishes a native installer binary and cargo-dist installers in GitHub Releases. That gives you a direct native install path without depending on Node.js just to start the installer.
@@ -56,6 +70,8 @@ https://github.com/bic98/codex-last-prompt-footer/releases
 
 ### Linux / macOS
 
+If the npm package is already up to date, this also works:
+
 ```bash
 npx codex-last-prompt-footer
 ```
@@ -68,7 +84,7 @@ If Linux or macOS build dependencies are missing, you can let the installer atte
 npx codex-last-prompt-footer --install-deps
 ```
 
-Alternative sources:
+GitHub source alternative:
 
 ```bash
 npx --yes github:bic98/codex-last-prompt-footer

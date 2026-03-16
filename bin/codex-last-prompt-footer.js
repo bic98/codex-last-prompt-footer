@@ -23,12 +23,13 @@ function printHelp() {
   console.log(`codex-last-prompt-footer
 
 Usage:
+  npx --yes github:bic98/codex-last-prompt-footer
+  npx --yes github:bic98/codex-last-prompt-footer --install-deps
   npx codex-last-prompt-footer
   npx codex-last-prompt-footer --install-deps
   npx codex-last-prompt-footer install
   npx codex-last-prompt-footer build
   npx codex-last-prompt-footer restore
-  npx --yes github:bic98/codex-last-prompt-footer
 
 Commands:
   install   Build and install the patched Codex CLI footer on Linux/macOS
