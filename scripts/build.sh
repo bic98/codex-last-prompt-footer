@@ -274,6 +274,26 @@ ensure_rust() {
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 }
 
+build_codex_cli() {
+  local logfile
+  logfile="$(mktemp)"
+
+  if cargo +stable build -p codex-cli --release --locked 2>&1 | tee "$logfile"; then
+    rm -f "$logfile"
+    return 0
+  fi
+
+  if grep -Eq 'cannot update the lock file|lock file .*needs to be updated|Cargo\.lock' "$logfile"; then
+    log "Cargo.lock needs an update for this platform; retrying without --locked"
+    rm -f "$logfile"
+    cargo +stable build -p codex-cli --release
+    return 0
+  fi
+
+  rm -f "$logfile"
+  return 1
+}
+
 parse_args "$@"
 
 need_cmd git
@@ -327,7 +347,7 @@ git -C "$SOURCE_DIR" apply "$PATCH_FILE"
 
 log "Building patched codex-cli (this may take a few minutes on first run)"
 pushd "$SOURCE_DIR/codex-rs" >/dev/null
-cargo +stable build -p codex-cli --release --locked
+build_codex_cli
 popd >/dev/null
 
 mkdir -p "$OUTPUT_DIR"

@@ -1,4 +1,5 @@
 dist/
+target/
 Thumbs.db
 .DS_Store
 *.tmp

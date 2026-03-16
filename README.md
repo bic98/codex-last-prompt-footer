@@ -38,6 +38,22 @@ gpt-5.4 · gpt-5.4 high · 5h 99% · weekly 68% · Q: fix the footer layout bug
 
 ## Install
 
+### Fastest: GitHub Releases
+
+This repository now publishes a native installer binary and cargo-dist installers in GitHub Releases. That gives you a direct native install path without depending on Node.js just to start the installer.
+
+Release artifacts include:
+
+- platform-specific installer binaries like `codex-last-prompt-footer-x86_64-unknown-linux-gnu.tar.xz`
+- cargo-dist shell and PowerShell installers
+- patched Codex release assets that the installer can download before falling back to a local Rust build
+
+If you prefer a release download flow, use the latest assets from:
+
+```text
+https://github.com/bic98/codex-last-prompt-footer/releases
+```
+
 ### Linux / macOS
 
 ```bash
@@ -101,6 +117,15 @@ brew install openssl@3 pkg-config
 ```
 
 If you hit `openssl-sys`, `libcap`, `pkg-config`, or native header errors, install the packages above and rerun the command.
+
+## Distribution Model
+
+This project now ships in two layers:
+
+1. A native installer binary released with cargo-dist.
+2. Patched Codex binaries released as GitHub assets for fast installs.
+
+The goal is to keep Rust compilation on end-user machines as a fallback, not the default path.
 
 ## Commands
 

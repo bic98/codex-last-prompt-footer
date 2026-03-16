@@ -165,6 +165,28 @@ function Ensure-Rust {
     }
 }
 
+function Invoke-CargoBuild {
+    $output = & cargo +stable build -p codex-cli --release --locked 2>&1
+    $exitCode = $LASTEXITCODE
+    $output | ForEach-Object { $_ }
+
+    if ($exitCode -eq 0) {
+        return
+    }
+
+    $outputText = ($output | Out-String)
+    if ($outputText -match 'cannot update the lock file|lock file .*needs to be updated|Cargo\.lock') {
+        Write-Step "Cargo.lock needs an update for this platform; retrying without --locked"
+        & cargo +stable build -p codex-cli --release
+        if ($LASTEXITCODE -ne 0) {
+            throw "cargo build failed with exit code $LASTEXITCODE"
+        }
+        return
+    }
+
+    throw "cargo build failed with exit code $exitCode"
+}
+
 Ensure-Command git
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $patchFile = Resolve-PatchFile -RepoRoot $repoRoot -Tag $CodexTag -Override $PatchFile
@@ -239,10 +261,7 @@ $cargoRoot = Join-Path $SourceDir "codex-rs"
 Write-Step "Building patched codex-cli (this may take a few minutes on first run)"
 Push-Location $cargoRoot
 try {
-    cargo +stable build -p codex-cli --release --locked
-    if ($LASTEXITCODE -ne 0) {
-        throw "cargo build failed with exit code $LASTEXITCODE"
-    }
+    Invoke-CargoBuild
 } finally {
     Pop-Location
 }
